@@ -1,0 +1,107 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.user_id;
+    }
+    function isNewDocOwner() {
+      return isAuthenticated() && request.auth.uid == request.resource.data.user_id;
+    }
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid;
+    }
+    function userIdUnchanged() {
+      return !('user_id' in request.resource.data) || request.resource.data.user_id == resource.data.user_id;
+    }
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidUserProfile() {
+      let data = request.resource.data;
+      return hasRequiredFields(['uid', 'display_name', 'total_score', 'current_streak', 'longest_streak', 'level', 'created_at']) &&
+             data.uid == request.auth.uid &&
+             data.display_name is string && data.display_name.size() <= 100 &&
+             data.total_score is number &&
+             data.current_streak is number &&
+             data.longest_streak is number &&
+             data.level in ['bronze', 'silver', 'gold', 'platinum'];
+    }
+
+    function isValidActivityLog() {
+      let data = request.resource.data;
+      return hasRequiredFields(['user_id', 'category', 'activity_type', 'quantity', 'unit', 'carbon_kg', 'logged_at']) &&
+             data.user_id == request.auth.uid &&
+             data.category in ['transport', 'food', 'energy', 'shopping', 'water'] &&
+             data.activity_type is string && data.activity_type.size() <= 100 &&
+             data.quantity is number &&
+             data.unit is string && data.unit.size() <= 20 &&
+             data.carbon_kg is number &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 500));
+    }
+
+    function isValidDailySummary() {
+      let data = request.resource.data;
+      return hasRequiredFields(['user_id', 'date', 'total_carbon_kg', 'transport_kg', 'food_kg', 'energy_kg', 'is_green_day', 'score_earned']) &&
+             data.user_id == request.auth.uid &&
+             data.date is string && data.date.size() == 10 &&
+             data.total_carbon_kg is number &&
+             data.transport_kg is number &&
+             data.food_kg is number &&
+             data.energy_kg is number &&
+             data.is_green_day is bool &&
+             data.score_earned is number;
+    }
+
+    function isValidBadge() {
+      let data = request.resource.data;
+      return hasRequiredFields(['user_id', 'badge_slug', 'earned_at']) &&
+             data.user_id == request.auth.uid &&
+             data.badge_slug is string && data.badge_slug.size() <= 50;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUserProfile();
+      allow update: if isOwner(userId) && isValidUserProfile() && uidUnchanged();
+      allow delete: if isOwner(userId);
+    }
+
+    match /activity_logs/{logId} {
+      allow read: if isDocOwner();
+      allow create: if isNewDocOwner() && isValidActivityLog();
+      allow update: if isDocOwner() && isNewDocOwner() && isValidActivityLog() && userIdUnchanged();
+      allow delete: if isDocOwner();
+    }
+
+    match /daily_summaries/{summaryId} {
+      allow read: if isDocOwner();
+      allow create: if isNewDocOwner() && isValidDailySummary();
+      allow update: if isDocOwner() && isNewDocOwner() && isValidDailySummary() && userIdUnchanged();
+      allow delete: if isDocOwner();
+    }
+
+    match /badges/{badgeId} {
+      allow read: if isDocOwner();
+      allow create: if isNewDocOwner() && isValidBadge();
+      allow update: if isDocOwner() && isNewDocOwner() && isValidBadge() && userIdUnchanged();
+      allow delete: if isDocOwner();
+    }
+  }
+}

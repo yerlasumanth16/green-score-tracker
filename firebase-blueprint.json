@@ -1,0 +1,83 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile data including gamification stats",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "display_name": { "type": "string" },
+        "avatar_url": { "type": "string" },
+        "bio": { "type": "string" },
+        "total_score": { "type": "number", "description": "Overall GreenScore" },
+        "current_streak": { "type": "number" },
+        "longest_streak": { "type": "number" },
+        "level": { "type": "string", "enum": ["bronze", "silver", "gold", "platinum"] },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "display_name", "total_score", "current_streak", "longest_streak", "level", "created_at"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "A single logged eco activity",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "category": { "type": "string", "enum": ["transport", "food", "energy", "shopping", "water"] },
+        "activity_type": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string" },
+        "carbon_kg": { "type": "number" },
+        "logged_at": { "type": "string", "format": "date-time" },
+        "notes": { "type": "string" }
+      },
+      "required": ["user_id", "category", "activity_type", "quantity", "unit", "carbon_kg", "logged_at"]
+    },
+    "DailySummary": {
+      "title": "DailySummary",
+      "description": "Aggregated daily carbon data",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "date": { "type": "string", "description": "YYYY-MM-DD format" },
+        "total_carbon_kg": { "type": "number" },
+        "transport_kg": { "type": "number" },
+        "food_kg": { "type": "number" },
+        "energy_kg": { "type": "number" },
+        "is_green_day": { "type": "boolean" },
+        "score_earned": { "type": "number" }
+      },
+      "required": ["user_id", "date", "total_carbon_kg", "transport_kg", "food_kg", "energy_kg", "is_green_day", "score_earned"]
+    },
+    "Badge": {
+      "title": "Badge",
+      "description": "Badges earned by the user",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "badge_slug": { "type": "string" },
+        "earned_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["user_id", "badge_slug", "earned_at"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profiles"
+    },
+    "/activity_logs/{logId}": {
+      "schema": { "$ref": "#/entities/ActivityLog" },
+      "description": "All activity logs"
+    },
+    "/daily_summaries/{summaryId}": {
+      "schema": { "$ref": "#/entities/DailySummary" },
+      "description": "Daily aggregated summaries"
+    },
+    "/badges/{badgeId}": {
+      "schema": { "$ref": "#/entities/Badge" },
+      "description": "User badges"
+    }
+  }
+}
